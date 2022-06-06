@@ -1,1 +1,1 @@
-"Let the planets begin" [Abdiel Lopez]
+"Let the planets begin"
