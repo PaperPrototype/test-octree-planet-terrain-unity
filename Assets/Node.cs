@@ -66,6 +66,8 @@ public class Node
         GameObject.Destroy(gameObject);
         vertices.Dispose();
         triangles.Dispose();
+        vertexIndex.Dispose();
+        triangleIndex.Dispose();
     }
 
     public void Schedule()
@@ -112,7 +114,7 @@ public class Node
             mesh.RecalculateBounds();
 
             meshFilter.mesh = mesh;
-            
+
             isScheduled = false;
         }
     }
