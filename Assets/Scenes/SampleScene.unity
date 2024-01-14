@@ -167,7 +167,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b34652e137d50451fbdac646c1754043, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxNodeCreationsPerFrame: 2
+  maxNodeCreationsPerFrame: 100
   maxMilliseconds: 16
   planetRadius: 3000
   voxelScale: 1

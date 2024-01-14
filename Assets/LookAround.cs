@@ -7,7 +7,7 @@ public class LookAround : MonoBehaviour
     public new Transform camera;
 
     private float speed = 1f;
-    private float anglePerSecond = 100f;
+    private float anglePerSecond = 1f;
 
     private void Start()
     {
@@ -33,13 +33,13 @@ public class LookAround : MonoBehaviour
         transform.position += transform.up * up * speed;
         transform.position += transform.right * right * speed;
 
-        float rotateY = Input.GetAxis("Mouse X");
-        float rotateX = Input.GetAxis("Mouse Y");
+        float rotateY = Input.GetAxis("Mouse X") != 0f ? Mathf.Sign(Input.GetAxis("Mouse X")) : 0f;
+        float rotateX = Input.GetAxis("Mouse Y") != 0f ? Mathf.Sign(Input.GetAxis("Mouse Y")) : 0f;
 
         // we look side to side
-        transform.eulerAngles += new Vector3(0, rotateY * anglePerSecond * Time.deltaTime);
+        transform.Rotate(new Vector3(0, rotateY * anglePerSecond));
 
         // camera looks up and down
-        camera.eulerAngles -= new Vector3(rotateX * anglePerSecond * Time.deltaTime, 0);
+        camera.Rotate(new Vector3(-rotateX * anglePerSecond, 0));
     }
 }

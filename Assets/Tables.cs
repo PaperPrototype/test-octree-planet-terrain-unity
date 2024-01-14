@@ -28,32 +28,20 @@ public static class Tables
 
     public static readonly float3 VertexOffset = new float3(0.5f, 0.5f, 0.5f);
 
-    public static readonly float3[] Vertices = new float3[8]
-    {
-        new float3(-0.5f, -0.5f, -0.5f) + VertexOffset,
-        new float3(0.5f, -0.5f, -0.5f) + VertexOffset,
-        new float3(0.5f, 0.5f, -0.5f) + VertexOffset,
-        new float3(-0.5f, 0.5f, -0.5f) + VertexOffset,
-        new float3(-0.5f, -0.5f, 0.5f) + VertexOffset,
-        new float3(0.5f, -0.5f, 0.5f) + VertexOffset,
-        new float3(0.5f, 0.5f, 0.5f) + VertexOffset,
-        new float3(-0.5f, 0.5f, 0.5f) + VertexOffset,
-    };
-
     /// <summary>
     /// all 8 possible vertices for a bloxel
     /// </summary>
-    // public static readonly float3[] Vertices = new float3[8]
-    // {
-    //     new float3(0.0f, 0.0f, 0.0f),
-    //     new float3(1.0f, 0.0f, 0.0f),
-    //     new float3(1.0f, 1.0f, 0.0f),
-    //     new float3(0.0f, 1.0f, 0.0f),
-    //     new float3(0.0f, 0.0f, 1.0f),
-    //     new float3(1.0f, 0.0f, 1.0f),
-    //     new float3(1.0f, 1.0f, 1.0f),
-    //     new float3(0.0f, 1.0f, 1.0f),
-    // };
+    public static readonly float3[] Vertices = new float3[8]
+    {
+        new float3(0.0f, 0.0f, 0.0f),
+        new float3(1.0f, 0.0f, 0.0f),
+        new float3(1.0f, 1.0f, 0.0f),
+        new float3(0.0f, 1.0f, 0.0f),
+        new float3(0.0f, 0.0f, 1.0f),
+        new float3(1.0f, 0.0f, 1.0f),
+        new float3(1.0f, 1.0f, 1.0f),
+        new float3(0.0f, 1.0f, 1.0f),
+    };
 
     /// <summary>
     /// right, left, up, down, front, back

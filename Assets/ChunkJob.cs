@@ -4,9 +4,12 @@ using UnityEngine;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
+using System.Runtime.CompilerServices;
 
 public struct ChunkJob : IJob
 {
+    private static readonly float3 one = new float3(1f, 1f, 1f);
+
     public Bounds bounds;
     public Mesh.MeshDataArray meshDataArray;
     public Vector3 planetCenterPosition;
@@ -15,11 +18,9 @@ public struct ChunkJob : IJob
     public int chunkResolution;
     public float nodeScale;
     public float3 worldNodePosition;
-    public float voxelScale;
 
     private float3 centerOffset;
     private float normalizedVoxelScale;
-
 
     public void Execute()
     {
@@ -38,6 +39,27 @@ public struct ChunkJob : IJob
         normalizedVoxelScale = nodeScale / chunkResolution;
 
         FastNoiseLite noise = new FastNoiseLite();
+        noise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);
+        noise.SetFrequency(0.01f);
+        noise.SetSeed(2376);
+
+        var voxels = new NativeArray<byte>((chunkResolution + 3) * (chunkResolution + 3) * (chunkResolution + 3), Allocator.Temp);
+        for (int x = 0; x < chunkResolution + 3; x++)
+        {
+            for (int y = 0; y < chunkResolution + 3; y++)
+            {
+                for (int z = 0; z < chunkResolution + 3; z++)
+                {
+                    if (!IsAir(x - 1, y - 1, z - 1, ref noise))
+                    {
+                        voxels[IndexUtilities.XyzToIndex(x, y, z, chunkResolution + 3)] = 1;
+                    }
+                }
+            }
+        }
+
+        // Cache smoothing calculations
+        NativeHashMap<float3, float3> hash = new NativeHashMap<float3, float3>(vertices.Length, Allocator.Temp);
 
         // variables
         int vertexOffset = 0;
@@ -49,20 +71,47 @@ public struct ChunkJob : IJob
             {
                 for (int z = 0; z < chunkResolution; z++)
                 {
-                    if (IsSolid(x, y, z, noise))
+                    // if we are a solid block
+                    if (!IsAir(x, y, z, ref noise))
                     {
                         // local mesh position of the voxel
                         float3 pos = (new float3(x, y, z) * normalizedVoxelScale) - centerOffset;
+                        float3 index = new float3(x, y, z);
 
                         for (int side = 0; side < 6; side++)
                         {
-                            if (!IsSolid(x + Tables.NeighborOffset[side].x, y + Tables.NeighborOffset[side].y, z + Tables.NeighborOffset[side].z, noise))
+                            if (IsAir(x + Tables.NeighborOffset[side].x, y + Tables.NeighborOffset[side].y, z + Tables.NeighborOffset[side].z, ref noise))
                             {
+                                float3 vertex1 = Tables.Vertices[Tables.BuildOrder[side, 0]];
+                                float3 vertex2 = Tables.Vertices[Tables.BuildOrder[side, 1]];
+                                float3 vertex3 = Tables.Vertices[Tables.BuildOrder[side, 2]];
+                                float3 vertex4 = Tables.Vertices[Tables.BuildOrder[side, 3]];
+
                                 // vertices
-                                vertices[vertexOffset + 0] = Tables.Vertices[Tables.BuildOrder[side, 0]] * normalizedVoxelScale + pos;
-                                vertices[vertexOffset + 1] = Tables.Vertices[Tables.BuildOrder[side, 1]] * normalizedVoxelScale + pos;
-                                vertices[vertexOffset + 2] = Tables.Vertices[Tables.BuildOrder[side, 2]] * normalizedVoxelScale + pos;
-                                vertices[vertexOffset + 3] = Tables.Vertices[Tables.BuildOrder[side, 3]] * normalizedVoxelScale + pos;
+                                vertices[vertexOffset + 0] = vertex1 * normalizedVoxelScale + pos;
+                                vertices[vertexOffset + 1] = vertex2 * normalizedVoxelScale + pos;
+                                vertices[vertexOffset + 2] = vertex3 * normalizedVoxelScale + pos;
+                                vertices[vertexOffset + 3] = vertex4 * normalizedVoxelScale + pos;
+
+                                // get smoothing
+                                float3 offset1 = OffsetToSmoothVertex(vertex1 + index, ref hash, voxels) * normalizedVoxelScale;
+                                float3 offset2 = OffsetToSmoothVertex(vertex2 + index, ref hash, voxels) * normalizedVoxelScale;
+                                float3 offset3 = OffsetToSmoothVertex(vertex3 + index, ref hash, voxels) * normalizedVoxelScale;
+                                float3 offset4 = OffsetToSmoothVertex(vertex4 + index, ref hash, voxels) * normalizedVoxelScale;
+
+                                Debug.Log(offset1);
+
+                                // apply smoothing
+                                vertices[vertexOffset + 0] += offset1;
+                                vertices[vertexOffset + 1] += offset2;
+                                vertices[vertexOffset + 2] += offset3;
+                                vertices[vertexOffset + 3] += offset4;
+
+                                // Normals
+                                // normals[vertexOffset + 0] = math.normalize(offset1);
+                                // normals[vertexOffset + 1] = math.normalize(offset2);
+                                // normals[vertexOffset + 2] = math.normalize(offset3);
+                                // normals[vertexOffset + 3] = math.normalize(offset4);
 
                                 // normals
                                 normals[vertexOffset + 0] = Tables.Normals[side];
@@ -101,6 +150,7 @@ public struct ChunkJob : IJob
         // apply the mesh to the meshDataArray
         MeshingUtility.ApplyMesh(ref meshDataArray, ref indicesSlice, ref verticesSlice, ref normalsSlice, ref bounds);
     }
+
     /// <summary>
     /// Checks if a voxel is solid
     /// </summary>
@@ -109,16 +159,8 @@ public struct ChunkJob : IJob
     /// <param name="z">local voxel index</param>
     /// <param name="noise"></param>
     /// <returns></returns>
-    private bool IsSolid(int x, int y, int z, FastNoiseLite noise)
+    public bool IsAir(int x, int y, int z, ref FastNoiseLite noise)
     {
-        // make outer voxels solid
-        if (x < 0 || x > chunkResolution - 1 ||
-            y < 0 || y > chunkResolution - 1 ||
-            z < 0 || z > chunkResolution - 1)
-        {
-            return false;
-        }
-
         // the voxels position in world coordinates
         float3 worldVoxelPosition = ((new float3(x, y, z) * normalizedVoxelScale) + worldNodePosition) - centerOffset;
 
@@ -131,12 +173,92 @@ public struct ChunkJob : IJob
         // above ground
         if (distance > planetRadius)
         {
-            return false; // air
+            return true; // air
         }
         // below ground
         else
         {
-            return true; // ground
+            return false; // ground
         }
+    }
+
+    public bool IsAirWorldPosition(float3 worldVoxelPosition, ref FastNoiseLite noise)
+    {
+        // a noise for distorting the surface of the planet
+        float planetSurfaceDistortion = noise.GetNoise(worldVoxelPosition.x, worldVoxelPosition.y, worldVoxelPosition.z) * 20f;
+
+        // make a sphere planet!
+        float distance = Vector3.Distance(worldVoxelPosition, planetCenterPosition) + planetSurfaceDistortion;
+
+        // above ground
+        if (distance > planetRadius)
+        {
+            return true; // air
+        }
+        // below ground
+        else
+        {
+            return false; // ground
+        }
+    }
+
+
+    public float3 OffsetToSmoothVertex(float3 vertex, ref NativeHashMap<float3, float3> hash, NativeArray<byte> voxels)
+    {
+        float3 offsetToSmoothVertex;
+        if (hash.TryGetValue(vertex, out float3 value))
+        {
+            offsetToSmoothVertex = value;
+        }
+        else
+        {
+            offsetToSmoothVertex = GetOffsetToSurface(vertex, voxels);
+            hash.Add(vertex, offsetToSmoothVertex);
+        }
+
+        return offsetToSmoothVertex;
+    }
+
+    public Vector3 GetOffsetToSurface(float3 p, NativeArray<byte> voxels)
+    {
+        float offset = 0.5f;
+        var norm = math.normalize(
+            new float3(
+                SampleDensity(new float3(p.x + offset, p.y, p.z), voxels) - SampleDensity(new float3(p.x - offset, p.y, p.z), voxels),
+                SampleDensity(new float3(p.x, p.y + offset, p.z), voxels) - SampleDensity(new float3(p.x, p.y - offset, p.z), voxels),
+                SampleDensity(new float3(p.x, p.y, p.z + offset), voxels) - SampleDensity(new float3(p.x, p.y, p.z - offset), voxels)
+            )
+        );
+
+        return (-norm) * SampleDensity(p, voxels);
+    }
+
+    public float SampleDensity(float3 p, NativeArray<byte> voxels)
+    {
+        // offset for cube mesh difference
+        p -= one * 0.5f;
+
+        int3 coord = new int3((int)math.floor(p.x), (int)math.floor(p.y), (int)math.floor(p.z));
+        float3 delta = new float3(p.x - coord.x, p.y - coord.y, p.z - coord.z);
+
+        // the 8 neighbors in the positive axis
+        float c00 = math.lerp(GetDistance(coord.x, coord.y, coord.z, voxels), GetDistance(coord.x + 1, coord.y, coord.z, voxels), delta.x);
+        float c01 = math.lerp(GetDistance(coord.x, coord.y, coord.z + 1, voxels), GetDistance(coord.x + 1, coord.y, coord.z + 1, voxels), delta.x);
+        float c10 = math.lerp(GetDistance(coord.x, coord.y + 1, coord.z, voxels), GetDistance(coord.x + 1, coord.y + 1, coord.z, voxels), delta.x);
+        float c11 = math.lerp(GetDistance(coord.x, coord.y + 1, coord.z + 1, voxels), GetDistance(coord.x + 1, coord.y + 1, coord.z + 1, voxels), delta.x);
+
+        // interpolate intersection between all 8 neighbors
+        return math.lerp(math.lerp(c00, c10, delta.y), math.lerp(c01, c11, delta.y), delta.z);
+    }
+
+    public float GetDistance(int x, int y, int z, NativeArray<byte> voxels)
+    {
+        return ShouldSmooth(x, y, z, voxels) ? 1f : -1f;
+    }
+
+    public bool ShouldSmooth(int x, int y, int z, NativeArray<byte> voxels)
+    {
+        x++; y++; z++;
+        return voxels[IndexUtilities.XyzToIndex(x, y, z, chunkResolution + 3)] == 1;
     }
 }

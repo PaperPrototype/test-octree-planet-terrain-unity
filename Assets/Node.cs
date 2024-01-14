@@ -78,7 +78,6 @@ public class Node
             chunkJob.planetRadius = octree.planetRadius;
             chunkJob.chunkResolution = octree.chunkResolution;
             chunkJob.nodeScale = NodeScale();
-            chunkJob.voxelScale = octree.voxelScale;
             chunkJob.worldNodePosition = NodePosition();
 
             jobCompleter = new JobCompleter(() =>
@@ -125,7 +124,7 @@ public class Node
 
     public float NodeScale()
     {
-        return octree.voxelScale * octree.chunkResolution * NodeResolution();
+        return octree.chunkResolution * NodeResolution();
     }
 
     public Vector3 NodePosition()

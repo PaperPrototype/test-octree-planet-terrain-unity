@@ -14,7 +14,6 @@ public class Octree : MonoBehaviour
     public float planetRadius = 3000f;
 
     [Space]
-    public float voxelScale = 1f;
     public int chunkResolution = 16;
 
     [Space]
@@ -36,7 +35,7 @@ public class Octree : MonoBehaviour
     private void Start()
     {
         nodeResolution = (int)Mathf.Pow(2, (divisions - 1));
-        nodeScale = voxelScale * chunkResolution * nodeResolution;
+        nodeScale = chunkResolution * nodeResolution;
 
         Vector3 offset = Vector3.up;
         Vector3 pos = (offset * nodeScale) - (Vector3.one * (nodeScale / 2));
@@ -110,7 +109,7 @@ public class Octree : MonoBehaviour
         {
             // if we are in the allowed radius
             float distance = Vector3.Distance(priority.position, node.NodePosition());
-            float allowedDistance = (voxelScale * chunkResolution * innerRadiusPadding) + (radius * node.NodeScale());
+            float allowedDistance = (chunkResolution * innerRadiusPadding) + (radius * node.NodeScale());
 
             // if distance is inside of allowed distance
             if (distance < allowedDistance)
@@ -239,9 +238,9 @@ public class Octree : MonoBehaviour
     private void DrawRadiuses(int divisions)
     {
         float nodeResolution = (int)Mathf.Pow(2, (divisions - 1));
-        float nodeScale = this.voxelScale * this.chunkResolution * nodeResolution;
+        float nodeScale = this.chunkResolution * nodeResolution;
 
-        float innerRadius = (this.innerRadiusPadding * this.voxelScale * this.chunkResolution);
+        float innerRadius = (this.innerRadiusPadding * this.chunkResolution);
         float radius = this.radius * nodeScale;
 
         float allowedRadius = innerRadius + radius;
