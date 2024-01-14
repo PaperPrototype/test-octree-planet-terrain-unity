@@ -26,18 +26,46 @@ public static class Tables
         new Vector3(1f, 0f, 0f), // top left
     };
 
-    public static readonly Vector3 VertexOffset = new Vector3(0.5f, 0.5f, 0.5f);
+    public static readonly float3 VertexOffset = new float3(0.5f, 0.5f, 0.5f);
 
-    public static readonly Vector3[] Vertices = new Vector3[8]
+    public static readonly float3[] Vertices = new float3[8]
     {
-        new Vector3(-0.5f, -0.5f, -0.5f) + VertexOffset,
-        new Vector3(0.5f, -0.5f, -0.5f) + VertexOffset,
-        new Vector3(0.5f, 0.5f, -0.5f) + VertexOffset,
-        new Vector3(-0.5f, 0.5f, -0.5f) + VertexOffset,
-        new Vector3(-0.5f, -0.5f, 0.5f) + VertexOffset,
-        new Vector3(0.5f, -0.5f, 0.5f) + VertexOffset,
-        new Vector3(0.5f, 0.5f, 0.5f) + VertexOffset,
-        new Vector3(-0.5f, 0.5f, 0.5f) + VertexOffset,
+        new float3(-0.5f, -0.5f, -0.5f) + VertexOffset,
+        new float3(0.5f, -0.5f, -0.5f) + VertexOffset,
+        new float3(0.5f, 0.5f, -0.5f) + VertexOffset,
+        new float3(-0.5f, 0.5f, -0.5f) + VertexOffset,
+        new float3(-0.5f, -0.5f, 0.5f) + VertexOffset,
+        new float3(0.5f, -0.5f, 0.5f) + VertexOffset,
+        new float3(0.5f, 0.5f, 0.5f) + VertexOffset,
+        new float3(-0.5f, 0.5f, 0.5f) + VertexOffset,
+    };
+
+    /// <summary>
+    /// all 8 possible vertices for a bloxel
+    /// </summary>
+    // public static readonly float3[] Vertices = new float3[8]
+    // {
+    //     new float3(0.0f, 0.0f, 0.0f),
+    //     new float3(1.0f, 0.0f, 0.0f),
+    //     new float3(1.0f, 1.0f, 0.0f),
+    //     new float3(0.0f, 1.0f, 0.0f),
+    //     new float3(0.0f, 0.0f, 1.0f),
+    //     new float3(1.0f, 0.0f, 1.0f),
+    //     new float3(1.0f, 1.0f, 1.0f),
+    //     new float3(0.0f, 1.0f, 1.0f),
+    // };
+
+    /// <summary>
+    /// right, left, up, down, front, back
+    /// </summary>
+    public static readonly float3[] Normals = new float3[6]
+    {
+        new float3(1.0f, 0.0f, 0.0f),
+        new float3(-1.0f, 0.0f, 0.0f),
+        new float3(0.0f, 1.0f, 0.0f),
+        new float3(0.0f, -1.0f, 0.0f),
+        new float3(0.0f, 0.0f, 1.0f),
+        new float3(0.0f, 0.0f, -1.0f),
     };
 
     public static readonly int[,] BuildOrder = new int[6, 4]

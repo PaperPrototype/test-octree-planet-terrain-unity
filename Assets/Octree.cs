@@ -1,7 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System.Diagnostics;
+using Unity.Collections;
+using Unity.Jobs;
 
 public class Octree : MonoBehaviour
 {
@@ -10,7 +11,7 @@ public class Octree : MonoBehaviour
     public int maxMilliseconds = 30;
 
     [Space]
-    public float planetRadius = 2000f;
+    public float planetRadius = 3000f;
 
     [Space]
     public float voxelScale = 1f;
@@ -21,18 +22,16 @@ public class Octree : MonoBehaviour
     public GameObject chunkPrefab;
 
     [Space]
-    public float innerRadiusPadding = 0;
+    public float innerRadiusPadding = 2;
     public float radius = 1;
-    public int divisions = 5;
+    public int divisions = 10;
 
     [HideInInspector]
     public Node root;
     private int nodeResolution;
     private float nodeScale;
     private double worldVoxelsCount;
-
-    private Stopwatch timer;
-    private bool finishedDrawingCurrentlyScheduledNodes = true;
+    private List<JobCompleter> toComplete = new List<JobCompleter>();
 
     private void Start()
     {
@@ -42,7 +41,7 @@ public class Octree : MonoBehaviour
         Vector3 offset = Vector3.up;
         Vector3 pos = (offset * nodeScale) - (Vector3.one * (nodeScale / 2));
         root = new Node(this, null, pos, divisions);
-        
+
         UnityEngine.Debug.Log("nodeResolution: " + nodeResolution);
         UnityEngine.Debug.Log("nodeScale: " + nodeResolution);
 
@@ -52,21 +51,28 @@ public class Octree : MonoBehaviour
 
     private void Update()
     {
-        timer = new Stopwatch();
-        timer.Start();
-
         Traverse(root, 0);
+        Schedule(root);
+    }
 
-        if (finishedDrawingCurrentlyScheduledNodes)
+    private void LateUpdate()
+    {
+        if (toComplete.Count > 0)
         {
-            Schedule(root);
-            finishedDrawingCurrentlyScheduledNodes = false;
-        } else
-        {
-            if (TryComplete(root))
+            NativeArray<JobHandle> jobHandles = new NativeArray<JobHandle>(toComplete.Count, Allocator.Temp);
+            for (int i = 0; i < toComplete.Count; i++)
             {
-                finishedDrawingCurrentlyScheduledNodes = true;
+                jobHandles[i] = toComplete[i].schedule();
             }
+            JobHandle.CompleteAll(jobHandles);
+            jobHandles.Dispose();
+
+            for (int i = 0; i < toComplete.Count; i++)
+            {
+                toComplete[i].onComplete();
+            }
+
+            toComplete.Clear();
         }
     }
 
@@ -79,11 +85,16 @@ public class Octree : MonoBehaviour
         }
     }
 
+    private void OnDisable()
+    {
+        Dispose(root);
+    }
+
     private void OnGUI()
     {
         GUILayout.Label("World Voxels Count: " + worldVoxelsCount);
     }
-    
+
     public void Traverse(Node node, int creations)
     {
         if (creations > maxNodeCreationsPerFrame)
@@ -106,7 +117,7 @@ public class Octree : MonoBehaviour
             {
                 // this is no longer a leaf node we need to clear it
                 node.Clear();
-                
+
                 // only create children if they don't already exist
                 if (node.children == null)
                 {
@@ -145,38 +156,12 @@ public class Octree : MonoBehaviour
         }
     }
 
-    public bool TryComplete(Node node)
-    {
-        if (timer.Elapsed.Milliseconds > maxMilliseconds)
-        {
-            return node.TryComplete();
-        }
-
-        node.TryComplete();
-
-        if (node.children == null)
-        {
-            return true;
-        }
-
-        // if completed children
-        bool completed = true;
-
-        // recurse
-        for (int i = 0; i < node.children.Length; i++)
-        {
-            if (!TryComplete(node.children[i]))
-            {
-                completed = false;
-            }
-        }
-
-        return completed;
-    }
-
     public void Schedule(Node node)
     {
-        node.Schedule();
+        if (node.TrySchedule(out JobCompleter completer))
+        {
+            toComplete.Add(completer);
+        }
 
         if (node.children == null)
         {
@@ -188,6 +173,23 @@ public class Octree : MonoBehaviour
         {
             Schedule(node.children[i]);
         }
+    }
+
+    public void Dispose(Node node)
+    {
+        // prevent from infinite recursion
+        if (node.children == null)
+        {
+            return;
+        }
+
+        // do deletion
+        for (int i = 0; i < node.children.Length; i++)
+        {
+            // dispose of gameObject and mesh arrays
+            node.children[i].Destroy();
+        }
+        node.children = null;
     }
 
     public void DeleteChildren(Node node)
@@ -207,8 +209,8 @@ public class Octree : MonoBehaviour
         // do deletion
         for (int i = 0; i < node.children.Length; i++)
         {
-            // dispose of gameobject and mesh arrays
-            node.children[i].Dispose();
+            // dispose of gameObject and mesh arrays
+            node.children[i].Destroy();
         }
         node.children = null;
     }
@@ -257,6 +259,5 @@ public class Octree : MonoBehaviour
 
             DrawRadiuses(divisions - 1);
         }
-
     }
 }
