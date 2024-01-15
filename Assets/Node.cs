@@ -1,9 +1,5 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using Unity.Collections;
 using Unity.Jobs;
-using Unity.Mathematics;
 
 public class Node
 {
@@ -80,16 +76,15 @@ public class Node
             chunkJob.nodeScale = NodeScale();
             chunkJob.worldNodePosition = NodePosition();
 
+            isScheduled = true;
+            needsDrawn = false;
+
             jobCompleter = new JobCompleter(() =>
             {
-                isScheduled = true;
-                needsDrawn = false;
-
                 // schedule
                 return chunkJob.Schedule();
             }, () =>
             {
-                Debug.Log("completed");
                 // complete job and set mesh
                 Mesh mesh = new Mesh
                 {
@@ -97,6 +92,7 @@ public class Node
                     bounds = bounds
                 };
                 Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh);
+                mesh.RecalculateNormals();
                 meshFilter.mesh = mesh;
                 isScheduled = false;
             });
@@ -127,6 +123,7 @@ public class Node
         return octree.chunkResolution * NodeResolution();
     }
 
+    // center position?
     public Vector3 NodePosition()
     {
         if (parent == null)

@@ -56,20 +56,20 @@ public static class Tables
         new float3(0.0f, 0.0f, -1.0f),
     };
 
-    public static readonly int[,] BuildOrder = new int[6, 4]
+    public static readonly int[][] BuildOrder = new int[6][]
     {
         // right, left, up, down, front, back
 
         // 0 1 2 2 1 3 <- triangle order
         
-        {1, 2, 5, 6}, // right face
-        {4, 7, 0, 3}, // left face
+        new int[]{1, 2, 5, 6}, // right face
+        new int[]{4, 7, 0, 3}, // left face
         
-        {3, 7, 2, 6}, // up face
-        {1, 5, 0, 4}, // down face
+        new int[]{3, 7, 2, 6}, // up face
+        new int[]{1, 5, 0, 4}, // down face
         
-        {5, 6, 4, 7}, // front face
-        {0, 3, 1, 2}, // back face
+        new int[]{5, 6, 4, 7}, // front face
+        new int[]{0, 3, 1, 2}, // back face
     };
 
 

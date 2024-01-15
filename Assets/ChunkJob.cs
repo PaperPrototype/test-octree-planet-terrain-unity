@@ -5,7 +5,9 @@ using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
 using System.Runtime.CompilerServices;
+using Unity.Burst;
 
+[BurstCompile]
 public struct ChunkJob : IJob
 {
     private static readonly float3 one = new float3(1f, 1f, 1f);
@@ -82,10 +84,10 @@ public struct ChunkJob : IJob
                         {
                             if (IsAir(x + Tables.NeighborOffset[side].x, y + Tables.NeighborOffset[side].y, z + Tables.NeighborOffset[side].z, ref noise))
                             {
-                                float3 vertex1 = Tables.Vertices[Tables.BuildOrder[side, 0]];
-                                float3 vertex2 = Tables.Vertices[Tables.BuildOrder[side, 1]];
-                                float3 vertex3 = Tables.Vertices[Tables.BuildOrder[side, 2]];
-                                float3 vertex4 = Tables.Vertices[Tables.BuildOrder[side, 3]];
+                                float3 vertex1 = Tables.Vertices[Tables.BuildOrder[side][0]];
+                                float3 vertex2 = Tables.Vertices[Tables.BuildOrder[side][1]];
+                                float3 vertex3 = Tables.Vertices[Tables.BuildOrder[side][2]];
+                                float3 vertex4 = Tables.Vertices[Tables.BuildOrder[side][3]];
 
                                 // vertices
                                 vertices[vertexOffset + 0] = vertex1 * normalizedVoxelScale + pos;
@@ -99,8 +101,6 @@ public struct ChunkJob : IJob
                                 float3 offset3 = OffsetToSmoothVertex(vertex3 + index, ref hash, voxels) * normalizedVoxelScale;
                                 float3 offset4 = OffsetToSmoothVertex(vertex4 + index, ref hash, voxels) * normalizedVoxelScale;
 
-                                Debug.Log(offset1);
-
                                 // apply smoothing
                                 vertices[vertexOffset + 0] += offset1;
                                 vertices[vertexOffset + 1] += offset2;
@@ -108,10 +108,10 @@ public struct ChunkJob : IJob
                                 vertices[vertexOffset + 3] += offset4;
 
                                 // Normals
-                                // normals[vertexOffset + 0] = math.normalize(offset1);
-                                // normals[vertexOffset + 1] = math.normalize(offset2);
-                                // normals[vertexOffset + 2] = math.normalize(offset3);
-                                // normals[vertexOffset + 3] = math.normalize(offset4);
+                                // normals[vertexOffset + 0] = -math.normalize(offset1);
+                                // normals[vertexOffset + 1] = -math.normalize(offset2);
+                                // normals[vertexOffset + 2] = -math.normalize(offset3);
+                                // normals[vertexOffset + 3] = -math.normalize(offset4);
 
                                 // normals
                                 normals[vertexOffset + 0] = Tables.Normals[side];
@@ -164,28 +164,16 @@ public struct ChunkJob : IJob
         // the voxels position in world coordinates
         float3 worldVoxelPosition = ((new float3(x, y, z) * normalizedVoxelScale) + worldNodePosition) - centerOffset;
 
-        // a noise for distorting the surface of the planet
-        float planetSurfaceDistortion = noise.GetNoise(worldVoxelPosition.x, worldVoxelPosition.y, worldVoxelPosition.z) * 20f;
-
-        // make a sphere planet!
-        float distance = Vector3.Distance(worldVoxelPosition, planetCenterPosition) + planetSurfaceDistortion;
-
-        // above ground
-        if (distance > planetRadius)
-        {
-            return true; // air
-        }
-        // below ground
-        else
-        {
-            return false; // ground
-        }
+        return IsAirWorldPosition(worldVoxelPosition, ref noise);
     }
 
     public bool IsAirWorldPosition(float3 worldVoxelPosition, ref FastNoiseLite noise)
     {
+        float noise1 = noise.GetNoise(worldVoxelPosition.x / 2f, worldVoxelPosition.y / 2f, worldVoxelPosition.z / 2f);
+        float noise1FrequencyControl = ((noise1 + 1f) / 2f);
+        float noise2 = noise.GetNoise((worldVoxelPosition.x + 10) * noise1FrequencyControl, worldVoxelPosition.y * noise1FrequencyControl, worldVoxelPosition.z * noise1FrequencyControl);
         // a noise for distorting the surface of the planet
-        float planetSurfaceDistortion = noise.GetNoise(worldVoxelPosition.x, worldVoxelPosition.y, worldVoxelPosition.z) * 20f;
+        float planetSurfaceDistortion = ((noise1 * 80f) + noise2) / 2f;
 
         // make a sphere planet!
         float distance = Vector3.Distance(worldVoxelPosition, planetCenterPosition) + planetSurfaceDistortion;
@@ -201,7 +189,6 @@ public struct ChunkJob : IJob
             return false; // ground
         }
     }
-
 
     public float3 OffsetToSmoothVertex(float3 vertex, ref NativeHashMap<float3, float3> hash, NativeArray<byte> voxels)
     {

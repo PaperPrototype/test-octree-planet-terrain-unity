@@ -3,15 +3,16 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Collections;
 using Unity.Jobs;
+using System.Diagnostics;
+using Unity.Mathematics;
 
 public class Octree : MonoBehaviour
 {
     [Space]
-    public int maxNodeCreationsPerFrame = 2;
-    public int maxMilliseconds = 30;
+    public int maxNodeCreationsPerFrame = 50;
 
     [Space]
-    public float planetRadius = 3000f;
+    public float planetRadius = 6000f;
 
     [Space]
     public int chunkResolution = 16;
@@ -22,8 +23,7 @@ public class Octree : MonoBehaviour
 
     [Space]
     public float innerRadiusPadding = 2;
-    public float radius = 1;
-    public int divisions = 10;
+    public int divisions = 11;
 
     [HideInInspector]
     public Node root;
@@ -58,6 +58,8 @@ public class Octree : MonoBehaviour
     {
         if (toComplete.Count > 0)
         {
+            var w = new Stopwatch();
+            w.Start();
             NativeArray<JobHandle> jobHandles = new NativeArray<JobHandle>(toComplete.Count, Allocator.Temp);
             for (int i = 0; i < toComplete.Count; i++)
             {
@@ -72,6 +74,8 @@ public class Octree : MonoBehaviour
             }
 
             toComplete.Clear();
+            w.Stop();
+            UnityEngine.Debug.Log("meshing took " + w.ElapsedMilliseconds);
         }
     }
 
@@ -107,12 +111,8 @@ public class Octree : MonoBehaviour
         // if we are not a deepest leaf node node
         if (node.divisions > 1)
         {
-            // if we are in the allowed radius
-            float distance = Vector3.Distance(priority.position, node.NodePosition());
-            float allowedDistance = (chunkResolution * innerRadiusPadding) + (radius * node.NodeScale());
-
             // if distance is inside of allowed distance
-            if (distance < allowedDistance)
+            if (ShouldSubdivide(node))
             {
                 // this is no longer a leaf node we need to clear it
                 node.Clear();
@@ -130,6 +130,7 @@ public class Octree : MonoBehaviour
                     }
                 }
             }
+
             // (outside of radius) we should not have children
             // no children means: IsLeaf == true
             else
@@ -153,6 +154,23 @@ public class Octree : MonoBehaviour
                 }
             }
         }
+    }
+
+    private bool ShouldSubdivide(Node node)
+    {
+        float3 center = node.NodePosition();
+        float3 scale = node.NodeScale() * innerRadiusPadding + 1;
+
+        // Berechnen der Grenzen des Knotens
+        Vector3 minBound = center - scale;
+        Vector3 maxBound = center + scale;
+
+        // Überprüfen, ob sich der Spieler innerhalb dieser Grenzen befindet
+        bool insideX = priority.position.x >= minBound.x && priority.position.x <= maxBound.x;
+        bool insideY = priority.position.y >= minBound.y && priority.position.y <= maxBound.y;
+        bool insideZ = priority.position.z >= minBound.z && priority.position.z <= maxBound.z;
+
+        return insideX && insideY && insideZ;
     }
 
     public void Schedule(Node node)
@@ -240,21 +258,18 @@ public class Octree : MonoBehaviour
         float nodeResolution = (int)Mathf.Pow(2, (divisions - 1));
         float nodeScale = this.chunkResolution * nodeResolution;
 
-        float innerRadius = (this.innerRadiusPadding * this.chunkResolution);
-        float radius = this.radius * nodeScale;
-
-        float allowedRadius = innerRadius + radius;
+        float3 scale = nodeScale * innerRadiusPadding * 2;
 
         // leaf node
         if (divisions < 2)
         {
             Gizmos.color = Color.grey;
-            Gizmos.DrawWireSphere(this.priority.position, allowedRadius);
+            Gizmos.DrawWireCube(this.priority.position, scale);
         }
         else
         {
             Gizmos.color = Color.green;
-            Gizmos.DrawWireSphere(this.priority.position, allowedRadius);
+            Gizmos.DrawWireCube(this.priority.position, scale);
 
             DrawRadiuses(divisions - 1);
         }

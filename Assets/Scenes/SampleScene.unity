@@ -167,16 +167,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b34652e137d50451fbdac646c1754043, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxNodeCreationsPerFrame: 100
-  maxMilliseconds: 16
-  planetRadius: 3000
-  voxelScale: 1
+  maxNodeCreationsPerFrame: 50
+  planetRadius: 20000
   chunkResolution: 16
   priority: {fileID: 1518825925}
   chunkPrefab: {fileID: 6535661478644871155, guid: 7b3a78ed15bd8485ea72641f401c8a09, type: 3}
   innerRadiusPadding: 2
-  radius: 1
-  divisions: 10
+  divisions: 13
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -400,8 +397,8 @@ Camera:
   m_GameObject: {fileID: 963194225}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0.120377965, g: 0.11681201, b: 0.14150941, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0

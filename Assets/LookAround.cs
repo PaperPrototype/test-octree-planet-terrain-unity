@@ -22,7 +22,7 @@ public class LookAround : MonoBehaviour
 
         if (Input.GetButton("Fire3"))
         {
-            speed = 4;
+            speed = 20;
         }
         else
         {
