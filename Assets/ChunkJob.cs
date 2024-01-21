@@ -95,24 +95,6 @@ public struct ChunkJob : IJob
                                 vertices[vertexOffset + 2] = vertex3 * normalizedVoxelScale + pos;
                                 vertices[vertexOffset + 3] = vertex4 * normalizedVoxelScale + pos;
 
-                                // get smoothing
-                                float3 offset1 = OffsetToSmoothVertex(vertex1 + index, ref hash, voxels) * normalizedVoxelScale;
-                                float3 offset2 = OffsetToSmoothVertex(vertex2 + index, ref hash, voxels) * normalizedVoxelScale;
-                                float3 offset3 = OffsetToSmoothVertex(vertex3 + index, ref hash, voxels) * normalizedVoxelScale;
-                                float3 offset4 = OffsetToSmoothVertex(vertex4 + index, ref hash, voxels) * normalizedVoxelScale;
-
-                                // apply smoothing
-                                vertices[vertexOffset + 0] += offset1;
-                                vertices[vertexOffset + 1] += offset2;
-                                vertices[vertexOffset + 2] += offset3;
-                                vertices[vertexOffset + 3] += offset4;
-
-                                // Normals
-                                // normals[vertexOffset + 0] = -math.normalize(offset1);
-                                // normals[vertexOffset + 1] = -math.normalize(offset2);
-                                // normals[vertexOffset + 2] = -math.normalize(offset3);
-                                // normals[vertexOffset + 3] = -math.normalize(offset4);
-
                                 // normals
                                 normals[vertexOffset + 0] = Tables.Normals[side];
                                 normals[vertexOffset + 1] = Tables.Normals[side];
@@ -170,10 +152,11 @@ public struct ChunkJob : IJob
     public bool IsAirWorldPosition(float3 worldVoxelPosition, ref FastNoiseLite noise)
     {
         float noise1 = noise.GetNoise(worldVoxelPosition.x / 2f, worldVoxelPosition.y / 2f, worldVoxelPosition.z / 2f);
-        float noise1FrequencyControl = ((noise1 + 1f) / 2f);
-        float noise2 = noise.GetNoise((worldVoxelPosition.x + 10) * noise1FrequencyControl, worldVoxelPosition.y * noise1FrequencyControl, worldVoxelPosition.z * noise1FrequencyControl);
+        float noise1FrequencyControl = ((noise1 + 1f) / 2f) * 40;
+
+        float noise2 = noise.GetNoise((worldVoxelPosition.x + 10) / noise1FrequencyControl, worldVoxelPosition.y / noise1FrequencyControl, worldVoxelPosition.z / noise1FrequencyControl);
         // a noise for distorting the surface of the planet
-        float planetSurfaceDistortion = ((noise1 * 80f) + noise2) / 2f;
+        float planetSurfaceDistortion = ((noise1 * 100f) + noise2) / 2f;
 
         // make a sphere planet!
         float distance = Vector3.Distance(worldVoxelPosition, planetCenterPosition) + planetSurfaceDistortion;
@@ -188,64 +171,5 @@ public struct ChunkJob : IJob
         {
             return false; // ground
         }
-    }
-
-    public float3 OffsetToSmoothVertex(float3 vertex, ref NativeHashMap<float3, float3> hash, NativeArray<byte> voxels)
-    {
-        float3 offsetToSmoothVertex;
-        if (hash.TryGetValue(vertex, out float3 value))
-        {
-            offsetToSmoothVertex = value;
-        }
-        else
-        {
-            offsetToSmoothVertex = GetOffsetToSurface(vertex, voxels);
-            hash.Add(vertex, offsetToSmoothVertex);
-        }
-
-        return offsetToSmoothVertex;
-    }
-
-    public Vector3 GetOffsetToSurface(float3 p, NativeArray<byte> voxels)
-    {
-        float offset = 0.5f;
-        var norm = math.normalize(
-            new float3(
-                SampleDensity(new float3(p.x + offset, p.y, p.z), voxels) - SampleDensity(new float3(p.x - offset, p.y, p.z), voxels),
-                SampleDensity(new float3(p.x, p.y + offset, p.z), voxels) - SampleDensity(new float3(p.x, p.y - offset, p.z), voxels),
-                SampleDensity(new float3(p.x, p.y, p.z + offset), voxels) - SampleDensity(new float3(p.x, p.y, p.z - offset), voxels)
-            )
-        );
-
-        return (-norm) * SampleDensity(p, voxels);
-    }
-
-    public float SampleDensity(float3 p, NativeArray<byte> voxels)
-    {
-        // offset for cube mesh difference
-        p -= one * 0.5f;
-
-        int3 coord = new int3((int)math.floor(p.x), (int)math.floor(p.y), (int)math.floor(p.z));
-        float3 delta = new float3(p.x - coord.x, p.y - coord.y, p.z - coord.z);
-
-        // the 8 neighbors in the positive axis
-        float c00 = math.lerp(GetDistance(coord.x, coord.y, coord.z, voxels), GetDistance(coord.x + 1, coord.y, coord.z, voxels), delta.x);
-        float c01 = math.lerp(GetDistance(coord.x, coord.y, coord.z + 1, voxels), GetDistance(coord.x + 1, coord.y, coord.z + 1, voxels), delta.x);
-        float c10 = math.lerp(GetDistance(coord.x, coord.y + 1, coord.z, voxels), GetDistance(coord.x + 1, coord.y + 1, coord.z, voxels), delta.x);
-        float c11 = math.lerp(GetDistance(coord.x, coord.y + 1, coord.z + 1, voxels), GetDistance(coord.x + 1, coord.y + 1, coord.z + 1, voxels), delta.x);
-
-        // interpolate intersection between all 8 neighbors
-        return math.lerp(math.lerp(c00, c10, delta.y), math.lerp(c01, c11, delta.y), delta.z);
-    }
-
-    public float GetDistance(int x, int y, int z, NativeArray<byte> voxels)
-    {
-        return ShouldSmooth(x, y, z, voxels) ? 1f : -1f;
-    }
-
-    public bool ShouldSmooth(int x, int y, int z, NativeArray<byte> voxels)
-    {
-        x++; y++; z++;
-        return voxels[IndexUtilities.XyzToIndex(x, y, z, chunkResolution + 3)] == 1;
     }
 }
