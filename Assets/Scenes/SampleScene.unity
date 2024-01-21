@@ -168,12 +168,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxNodeCreationsPerFrame: 50
-  planetRadius: 20000
+  planetRadius: 10000
   chunkResolution: 16
   priority: {fileID: 1518825925}
   chunkPrefab: {fileID: 6535661478644871155, guid: 7b3a78ed15bd8485ea72641f401c8a09, type: 3}
   innerRadiusPadding: 2
-  divisions: 13
+  divisions: 12
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
