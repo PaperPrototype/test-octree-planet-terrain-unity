@@ -43,5 +43,4 @@ public static class MeshingUtility
             vertexCount = vertices.Length,
         }, MeshUpdateFlags.DontRecalculateBounds);
     }
-
 }
