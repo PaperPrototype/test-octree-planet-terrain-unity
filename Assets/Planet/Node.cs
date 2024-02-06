@@ -67,7 +67,7 @@ public class Node
             var bounds = new Bounds(Vector3.zero, Vector3.one * NodeScale());
 
             // create job
-            var chunkJob = new ChunkJob();
+            var chunkJob = new NodeJob();
             chunkJob.meshDataArray = meshDataArray;
             chunkJob.bounds = bounds;
             chunkJob.planetCenterPosition = octree.root.NodePosition();

@@ -1,14 +1,11 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.Mathematics;
-using System.Runtime.CompilerServices;
 using Unity.Burst;
 
 [BurstCompile]
-public struct ChunkJob : IJob
+public struct NodeJob : IJob
 {
     private static readonly float3 one = new float3(1f, 1f, 1f);
 
@@ -54,7 +51,7 @@ public struct ChunkJob : IJob
                 {
                     if (!IsAir(x - 1, y - 1, z - 1, ref noise))
                     {
-                        voxels[IndexUtilities.XyzToIndex(x, y, z, chunkResolution + 3)] = 1;
+                        voxels[IndexUtilities.XyzToIndex(x, y, z, chunkResolution + 3, chunkResolution + 3)] = 1;
                     }
                 }
             }
@@ -246,6 +243,6 @@ public struct ChunkJob : IJob
     public bool ShouldSmooth(int x, int y, int z, NativeArray<byte> voxels)
     {
         x++; y++; z++;
-        return voxels[IndexUtilities.XyzToIndex(x, y, z, chunkResolution + 3)] == 1;
+        return voxels[IndexUtilities.XyzToIndex(x, y, z, chunkResolution + 3, chunkResolution + 3)] == 1;
     }
 }
